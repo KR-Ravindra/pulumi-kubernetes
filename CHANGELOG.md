@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- [#3549](https://github.com/pulumi/pulumi-kubernetes/issues/3549) Allow the Python `CustomResource` and `CustomResourcePatch` overlays to accept arbitrary top-level fields as keyword arguments, so custom resources such as `VolumeSnapshotClass` that carry fields outside `spec` can be created from Python, matching the other SDKs.
+
 ## 4.34.0 (September 8, 2026)
 
 ### Fixed

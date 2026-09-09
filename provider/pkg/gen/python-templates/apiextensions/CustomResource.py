@@ -91,7 +91,8 @@ class CustomResource(pulumi.CustomResource):
                  metadata: Optional[pulumi.Input[pulumi.InputType['_meta.v1.ObjectMetaArgs']]] = None,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  __name__=None,
-                 __opts__=None):
+                 __opts__=None,
+                 **kwargs):
         """
         CustomResource represents an instance of a CustomResourceDefinition (CRD). For example, the
         CoreOS Prometheus operator exposes a CRD `monitoring.coreos.com/ServiceMonitor`; to
@@ -109,6 +110,10 @@ class CustomResource(pulumi.CustomResource):
                More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata.
         :param Optional[pulumi.ResourceOptions] opts: A bag of options that control this
                resource's behavior.
+        :param Any kwargs: Additional top-level fields of the custom resource, such as
+               `driver` and `deletionPolicy` on a `VolumeSnapshotClass`. These are passed
+               through to the Kubernetes API unchanged, so use the field names exactly as the
+               CustomResourceDefinition declares them.
         """
         if __name__ is not None:
             warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)
@@ -121,7 +126,7 @@ class CustomResource(pulumi.CustomResource):
         if not isinstance(resource_name, str):
             raise TypeError('Expected resource name to be a string')
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(version=_utilities.get_version()))
-        self._internal_init(resource_name, api_version=api_version, kind=kind, opts=opts, metadata=metadata, spec=spec)
+        self._internal_init(resource_name, api_version=api_version, kind=kind, opts=opts, metadata=metadata, spec=spec, **kwargs)
 
     def _internal_init(__self__,
                  resource_name: str,
@@ -130,7 +135,8 @@ class CustomResource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  metadata: Optional[pulumi.Input[pulumi.InputType['_meta.v1.ObjectMetaArgs']]] = None,
                  spec: Optional[Any] = None,
-                 __props__=None):
+                 __props__=None,
+                 **kwargs):
         if opts is None:
             opts = pulumi.ResourceOptions()
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -150,6 +156,8 @@ class CustomResource(pulumi.CustomResource):
             __props__.__dict__["kind"] = kind
             __props__.__dict__["metadata"] = metadata
             __props__.__dict__["spec"] = spec
+            for key, value in kwargs.items():
+                __props__.__dict__[key] = value
         super(CustomResource, __self__).__init__(
             f"kubernetes:{api_version}:{kind}",
             resource_name,
