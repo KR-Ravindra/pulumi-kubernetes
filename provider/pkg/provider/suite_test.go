@@ -19,6 +19,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"sync"
 	"testing"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -84,6 +85,8 @@ type mockEngine struct {
 	t            testing.TB
 	logger       *log.Logger
 	rootResource string
+	mu           sync.Mutex
+	logs         []*pulumirpc.LogRequest
 }
 
 var _ pulumirpc.EngineServer = &mockEngine{}
@@ -94,7 +97,17 @@ func (m *mockEngine) Log(_ /* ctx */ context.Context, in *pulumirpc.LogRequest) 
 	if m.logger != nil {
 		m.logger.Printf("%s: %s", in.GetSeverity(), in.GetMessage())
 	}
+	m.mu.Lock()
+	m.logs = append(m.logs, in)
+	m.mu.Unlock()
 	return &pbempty.Empty{}, nil
+}
+
+// Logs returns the log messages received by the engine so far.
+func (m *mockEngine) Logs() []*pulumirpc.LogRequest {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]*pulumirpc.LogRequest(nil), m.logs...)
 }
 
 // GetRootResource gets the URN of the root resource, the resource that should be the root of all

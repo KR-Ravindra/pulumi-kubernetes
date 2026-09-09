@@ -114,6 +114,28 @@ var _ = gk.Describe("RPC:Construct", func() {
 				_, err := k.Construct(context.Background(), req)
 				gm.Expect(err).To(gm.MatchError(gm.ContainSubstring("configured Kubernetes cluster is unreachable")))
 			})
+
+			gk.Context("when skipUpdateUnreachable is true", func() {
+				gk.JustBeforeEach(func() {
+					k.skipUpdateUnreachable = true
+				})
+				gk.It("should delegate to the provider and log a warning", func() {
+					result, err := k.Construct(context.Background(), req)
+					gm.Expect(err).ShouldNot(gm.HaveOccurred())
+					gm.Expect(testComponent.typ).Should(gm.Equal("kubernetes:test:TestComponent"))
+					gm.Expect(result.Urn).Should(gm.Equal("urn:pulumi:test::test::test:TestComponent::testComponent"))
+					gm.Expect(pctx.engine.Logs()).Should(gm.ContainElement(gm.And(
+						gm.HaveField("Severity", gm.Equal(pulumirpc.LogSeverity_WARNING)),
+						gm.HaveField("Message", gm.ContainSubstring("skipUpdateUnreachable")),
+					)))
+				})
+				gk.It("should provide a default namespace when none is set", func() {
+					k.defaultNamespace = ""
+					_, err := k.Construct(context.Background(), req)
+					gm.Expect(err).ShouldNot(gm.HaveOccurred())
+					gm.Expect(testComponent.opts.DefaultNamespace).Should(gm.Equal("default"))
+				})
+			})
 		})
 	})
 })

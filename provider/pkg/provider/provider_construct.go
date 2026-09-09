@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -43,10 +44,10 @@ func (k *kubeProvider) getResourceProvider(typ string) (providerresource.Resourc
 		return nil, false
 	}
 
-	// In yamlRenderMode, defaultNamespace might not be set if the cluster is unreachable.
-	// Provide a default value in this case.
+	// defaultNamespace might not be set if the cluster is unreachable, which is tolerated in yamlRenderMode
+	// and when the skipUpdateUnreachable flag is set. Provide a default value in this case.
 	defaultNamespace := k.defaultNamespace
-	if defaultNamespace == "" && k.yamlRenderMode {
+	if defaultNamespace == "" && (k.yamlRenderMode || k.clusterUnreachable) {
 		defaultNamespace = canonicalNamespace(defaultNamespace)
 	}
 
@@ -70,11 +71,18 @@ func (k *kubeProvider) Construct(
 ) (*pulumirpc.ConstructResponse, error) {
 
 	if k.clusterUnreachable && !k.yamlRenderMode {
-		return nil, fmt.Errorf("configured Kubernetes cluster is unreachable: %s", k.clusterUnreachableReason)
+		if !k.skipUpdateUnreachable {
+			return nil, fmt.Errorf("configured Kubernetes cluster is unreachable: %s", k.clusterUnreachableReason)
+		}
+		// Construct the component anyway so that its child resources go through Check/Read, which
+		// honor skipUpdateUnreachable, rather than failing the whole component up front.
+		_ = k.host.Log(ctx, diag.Warning, "", fmt.Sprintf(
+			"Cluster is unreachable (%s) but skipUpdateUnreachable flag is set to true, skipping...",
+			k.clusterUnreachableReason))
 	}
-	// In yamlRenderMode we provide a default value for the default namespace.
-	// In all other cases we need to assert a default namespace is set.
-	if !k.yamlRenderMode {
+	// In yamlRenderMode, or when an unreachable cluster is tolerated, we provide a default value for
+	// the default namespace. In all other cases we need to assert a default namespace is set.
+	if !k.yamlRenderMode && !k.clusterUnreachable {
 		contract.Assertf(
 			k.defaultNamespace != "" || k.yamlRenderMode,
 			"expected defaultNamespace outside of render mode",

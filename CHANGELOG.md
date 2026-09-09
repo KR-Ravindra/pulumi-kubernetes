@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- [#3463](https://github.com/pulumi/pulumi-kubernetes/issues/3463) Honor the `skipUpdateUnreachable` provider flag for component resources (`yaml/v2:ConfigGroup`, `yaml/v2:ConfigFile`, `helm.sh/v4:Chart`, `kustomize/v2:Directory`). When the cluster is unreachable and the flag is set, the component is constructed with a warning instead of failing, so its child resources are skipped like custom resources are.
+
 ## 4.34.0 (September 8, 2026)
 
 ### Fixed
